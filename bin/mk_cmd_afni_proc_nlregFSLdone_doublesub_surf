@@ -1,0 +1,74 @@
+#!/bin/tcsh -xef
+
+# Volume-based analysis with distortion correction
+
+module load afni/19.1.00-omp
+
+set SUB = $argv[1]
+
+set basedset = MNI152_T1_1mm_brain.nii.gz
+set tpath = `@FindAfniDsetPath $basedset`
+if ( "$tpath" == '' ) then
+    echo "***** @SSwarper -- Failed to find $basedset *****"
+    exit 1
+endif
+set basedset = $tpath/$basedset
+
+set warpdir = anat_warped_FSLmni152
+
+afni_proc.py -subj_id $SUB \
+    -script proc.$SUB -scr_overwrite \
+    -blocks tshift align tlrc volreg surf blur mask scale regress \
+    -dsets ${SUB}/${SUB}_epi_r?+orig.HEAD \
+    -surf_anat ${SUB}/SUMA/${SUB}_SurfVol+orig \
+    -surf_spec ${SUB}/SUMA/std.141.${SUB}_?h.spec \
+    -copy_anat ${SUB}/${SUB}_anat+orig \
+    -blip_forward_dset ${SUB}/${SUB}_fieldmap_ap+orig \
+    -blip_reverse_dset ${SUB}/${SUB}_fieldmap_pa+orig \
+    -volreg_align_to MIN_OUTLIER \
+    -volreg_align_e2a \
+    -volreg_tlrc_warp \
+    -blur_size 4.0 \
+    -regress_stim_times \
+        ${SUB}/${SUB}_txtuAM.txt \
+        ${SUB}/${SUB}_txtrAM.txt \
+        ${SUB}/${SUB}_symuAM.txt \
+        ${SUB}/${SUB}_symrAM.txt \
+    -regress_stim_labels \
+        TxtU TxtR SymU SymR \
+    -regress_basis 'BLOCK(4,1)' \
+    -regress_stim_types AM2 AM2 AM2 AM2 \
+    -regress_motion_per_run \
+    -regress_censor_motion 0.5 \
+    -regress_opts_3dD \
+        -num_glt 18 \
+        -gltsym 'SYM: SymU[0] SymR[0] -TxtU[0] -TxtR[0]' -glt_label 1 Sym-Txt_mean \
+        -gltsym 'SYM: SymU[1] SymR[1] -TxtU[1] -TxtR[1]' -glt_label 2 Sym-Txt_AM \
+        -gltsym 'SYM: SymR[0] TxtR[0] -SymU[0] -TxtU[0]' -glt_label 3 Rule-Uni_mean \
+        -gltsym 'SYM: SymR[1] TxtR[1] -SymU[1] -TxtU[1]' -glt_label 4 Rule-Uni_AM \
+        -gltsym 'SYM: TxtR[0] -TxtU[0]' -glt_label 5 TxtR-TxtU_mean \
+        -gltsym 'SYM: TxtR[1] -TxtU[1]' -glt_label 6 TxtR-TxtU_AM \
+        -gltsym 'SYM: SymR[0] -SymU[0]' -glt_label 7 SymR-SymU_mean \
+        -gltsym 'SYM: SymR[1] -SymU[1]' -glt_label 8 SymR-SymU_AM \
+        -gltsym 'SYM: SymR[0] -TxtR[0]' -glt_label 9 SymR-TxtR_mean \
+        -gltsym 'SYM: SymR[1] -TxtR[1]' -glt_label 10 SymR-TxtR_AM \
+        -gltsym 'SYM: SymU[0] -TxtU[0]' -glt_label 11 SymU-TxtU_mean \
+        -gltsym 'SYM: SymU[1] -TxtU[1]' -glt_label 12 SymU-TxtU_AM \
+        -gltsym 'SYM: SymR[0] -TxtU[0]' -glt_label 13 SymR-TxtU_mean \
+        -gltsym 'SYM: SymR[1] -TxtU[1]' -glt_label 14 SymR-TxtU_AM \
+        -gltsym 'SYM: TxtR[0] -SymU[0]' -glt_label 15 TxtR-SymU_mean \
+        -gltsym 'SYM: TxtR[1] -SymU[1]' -glt_label 16 TxtR-SymU_AM \
+        -gltsym 'SYM: SymR[0] -SymU[0] -TxtR[0] TxtU[0]' -glt_label 17 Double_Sub \
+        -gltsym 'SYM: SymR[1] -SymU[1] -TxtR[1] TxtU[1]' -glt_label 18 Double_Sub_AM \
+        -jobs 4 \
+    -regress_make_ideal_sum IDEAL.1D \
+    -copy_anat anat_warped_FSLmni152/anatSS.${SUB}.nii \
+    -tlrc_base $basedset \
+    -tlrc_NL_warp \
+    -tlrc_NL_warped_dsets \
+        $warpdir/anatQQ.${SUB}.nii.gz \
+        $warpdir/anatQQ.${SUB}.aff12.1D \
+        $warpdir/anatQQ.${SUB}_WARP.nii.gz \
+    -regress_3dD_stop \
+    -regress_reml_exec
+

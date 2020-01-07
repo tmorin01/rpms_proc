@@ -1,0 +1,41 @@
+#!/bin/bash -l
+
+# Set SCC project
+#$ -P sternlab
+
+# Request 1 day time limit
+#$ -l h_rt=24:00:00
+
+# Give job a name
+#$ -N nlreg_2035
+
+# Combine output and error files into a single file
+#$ -j y
+
+# Try to use multiple cores
+#$ -pe omp 12
+#$ -v OMP_NUM_THREADS=8
+
+
+# Load Modules
+module load afni/19.1.00-omp
+module load fsl
+module load freesurfer
+
+SUBJECT=$1
+proj_dir=/projectnb/sternlab/tom/RPMS/scan_data
+
+# Get anatomical scan and copy over to afni directory
+echo "Adding anat_$SUBJECT.nii to afni directory..."
+anat_run=`cat $proj_dir/$SUBJECT/3danat/runs`
+cp $proj_dir/$SUBJECT/3danat/$anat_run/memprage1_rms.nii $proj_dir/$SUBJECT/afni/$SUBJECT/anat_$SUBJECT.nii
+mri_convert $proj_dir/$SUBJECT/afni/$SUBJECT/anat_$SUBJECT.nii $proj_dir/$SUBJECT/afni/$SUBJECT/anat_$SUBJECT.nii.gz
+rm $proj_dir/$SUBJECT/afni/$SUBJECT/anat_$SUBJECT.nii
+cp bin/nonlin.reg.FSLmni152 $proj_dir/$SUBJECT/afni/
+cd /projectnb/sternlab/tom/RPMS/scan_data/$SUBJECT/afni/
+
+# Run nonlinear registration
+echo "Running nonlin.reg..."
+tcsh nonlin.reg.FSLmni152 $1
+
+

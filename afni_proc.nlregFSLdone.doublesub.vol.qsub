@@ -1,0 +1,67 @@
+#!/bin/bash -l
+
+#  Author: Tom Morin
+#    Date: February, 2019
+# Purpose: Run AFNI preprocessing (w/ Freesurfer's SMS 3 STC) and distortion correction (blip up/blip down)
+# 
+#   USAGE: qsub afni_proc.nlreg.distcorr.qsub /path/to/sessids
+
+#<-- MANDATORY USER EDIT HERE -->
+# Set SCC project
+#$ -P sternlab
+
+# Request a node with minimum 4 GB of memory per core as recommended by freesurfer
+#$ -l mem_per_core=4G
+
+# Request additional time for the job to run
+#$ -l h_rt=24:00:00
+
+# Give job a name
+#$ -N ap_fsldAM
+
+# Combine output and error files into a single file
+#$ -j y
+
+# Allow multiple cores to be used on a single node
+#$ -pe omp 4
+
+#<-- MANDATORY USER EDIT HERE -->
+# Submit an array job with N tasks
+#$ -t 1-28
+
+# Load desired modules
+module load freesurfer/6.0
+module load afni/19.1.00-omp
+module load fsl
+
+# <--- MANDATORY USER EDIT HERE --->
+# Set environment variables
+export SUBJECTS_DIR=/projectnb/sternlab/tom/RPMS/scan_data
+
+
+# Keep track of information related to the current job
+echo "=========================================================="
+echo "Start date : $(date)"
+echo "Job name : $JOB_NAME"
+echo "Job ID : $JOB_ID  $SGE_TASK_ID"
+echo "=========================================================="
+
+# ========================= MAIN BODY OF SCRIPT ================================
+
+while read subject
+do
+    subjects+=($subject)
+done<$1
+
+index=$(($SGE_TASK_ID-1))
+subjid=${subjects[$index]}
+
+proj_dir=/projectnb/sternlab/tom/RPMS/scan_data/$subjid/afni
+
+echo "Copying afni_proc.regressAM script to subject's afni directory..."
+cp bin/afni_proc.nlregFSLdone.doublesub.vol $proj_dir/
+cd $proj_dir
+
+echo "Running afni_proc.nlreg on $SUBJECT..."
+tcsh afni_proc.nlregFSLdone.doublesub.vol $subjid |& tee output.proc.nlregFSLdone.doublesub.vol.$subjid
+

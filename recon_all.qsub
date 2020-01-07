@@ -1,0 +1,49 @@
+#!/bin/bash -l
+
+#<-- MANDATORY USER EDIT HERE -->
+# Set SCC project
+#$ -P sternlab
+
+# Request a node with minimum 4 GB of memory per core as recommended by freesurfer
+#$ -l mem_per_core=4G
+
+# Give job a name
+#$ -N recon_all
+
+# Combine output and error files into a single file
+#$ -j y
+
+# Allow multiple cores to be used on a single node
+#$ -pe omp 4
+
+#<-- MANDATORY USER EDIT HERE -->
+# Submit an array job with N tasks
+#$ -t 1-2
+
+# Load desired modules
+module load freesurfer/6.0
+
+# <--- MANDATORY USER EDIT HERE --->
+# Set environment variables
+export SUBJECTS_DIR=/projectnb/sternlab/tom/RPMS/scan_data
+
+
+# Keep track of information related to the current job
+echo "=========================================================="
+echo "Start date : $(date)"
+echo "Job name : $JOB_NAME"
+echo "Job ID : $JOB_ID  $SGE_TASK_ID"
+echo "=========================================================="
+
+# ========================= MAIN BODY OF SCRIPT ================================
+
+while read subject
+do
+    subjects+=($subject)
+done<$1
+
+index=$(($SGE_TASK_ID-1))
+subjid=${subjects[$index]}
+
+recon-all -all -subjid $subjid -parallel
+

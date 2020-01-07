@@ -1,0 +1,54 @@
+#!/bin/tcsh
+
+#  Author: Tom Morin
+#    Date: June, 2019
+# Purpose: Nonlinearly warp RPMS data to FSL's MNI152_T1_1mm template
+
+set subj = $argv[1]
+set tempdir = .
+
+# don't log AFNI programs in ~/.afni.log
+# don't try any version checks
+# don't auto-compress output files
+setenv AFNI_DONT_LOGFILE YES
+setenv AFNI_VERSION_CHECK NO
+setenv AFNI_COMPRESSOR NONE
+setenv OMP_NUM_THREADS 8
+
+echo "NUMBER OF THREADS IN ENV (tcsh script): $OMP_NUM_THREADS"
+
+### go to data directory
+# topdir = directory above this Scripts directory
+set topdir = `dirname $cwd/afni`
+set
+cd $topdir/$subj
+
+### create final output directories
+mkdir -p $topdir/anat_warped_FSLmni152
+mkdir -p $topdir/anat_warped_FSLmni152/snapshots
+
+### create temp directory to hold work, and copy anat there
+mkdir -p temp_$subj
+mv anat_$subj.nii.gz temp_$subj
+cd temp_$subj
+
+### process the anat dataset, using the AFNI script
+### that does the warping and skull-stripping
+@SSwarper -input anat_$subj.nii.gz \
+          -base FSLmni152_T1_1mm_SSW.nii.gz \
+          -subid $subj
+
+# compress the output datasets
+gzip -1v *.nii
+### move the results to where they belong
+# skull-stripped original, Q-warped dataset, and the warps
+\mv -f anatSS.${subj}.nii.gz anatQQ.${subj}.nii.gz        \
+       anatQQ.${subj}.aff12.1D anatQQ.${subj}_WARP.nii.gz \
+       $topdir/anat_warped_FSLmni152
+# snapshots for visual inspection
+\mv -f *.jpg $topdir/anat_warped_FSLmni152/snapshots
+# delete the temporary directory
+cd ..
+\rm -rf temp_$subj
+exit 0
+

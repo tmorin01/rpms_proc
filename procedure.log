@@ -1,0 +1,43 @@
+Scripts run for Morin, Ma, & Stern paper (in prep.)
+
+========== TASK DATA PREPROCESSING & FIRST-LEVEL GLM ==========
+0. run_dcm_unpack_ravens.sh
+                           // unpack raw data from DICOM to NIFTI
+1. recon_all.qsub          // runs recon_all for all subjects in sessids file 
+                           // be sure to create mri/orig/001.mgz before running
+2. mk_afni_dir.sh             // copies output from dcm_unpack into afni dir structure
+3. nonlin.reg.FSLmni152.qsub // Run AFNI's nonlinear registration command
+4a. afni_proc.nlregFSLdone.doublesub.vol.qsub    
+                           // Preprocessing with afni in volume space, 
+                           // assumes nonlin.reg.FSLmni152.qsub has already run
+4b. afni_proc.nlregFSLdone.doublesub.surf.qsub
+                           // Preprocessing with afni in surface space,
+                           // assumes nonlin.reg.FSLmni152.qsub has already run
+                           // Also runs GLM on individual subjects
+5. QC Check                // Navigate to teach subject's afni directory, and run
+                           // ./\@ss_review_driver to review the results
+6. motion_stats.sh         // Determine how many TRs show > 3mm motion
+
+
+========== GROUP ANALYSIS ==========
+0. mk_group_analysis       // write scripts for afni group analysis
+
+1. Run group analysis scripts in group analysis directory (3dttest++, etc.)
+
+2. get_cluster_stats.sh    // Get number of voxels and ROIs within each significant cluster 
+                           // after ETAC correction
+                           // ALSO: can run FSL's autoaq function to get cluster info
+
+
+========== ROI ANALYSES ==========
+0. generate_subj_rois.qsub // *No longer necessary* This script is old and was used to generate 
+                           // caudate and putament ROIs. The useful line in this 
+                           // script is the @SUMA_Make_Spec_FS command which 
+                           // converts Freesurfer output (from recon_all) to AFNI format
+1. annot_to_niml.sh        // Convert Yeo7 and Yeo17 (and possibly other) Freesurfer 
+                           // .annot files into .niml.dset files suitable for use in SUMA. 
+                           // Before using this script, run @SUMA_Make_Spec_FS on 
+                           // fsaverage, copy results in $group_dir/suma_fsaverage
+2. yeo_roi_analysis.sh     // Extract average signal and number of vertices present in each ROI
+                           // from the Yeo7 and Yeo17 parcellations for a statistical map
+
